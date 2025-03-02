@@ -113,5 +113,21 @@ def int_check(question,name):
 def currency(x):
     """Formats numbers as currency ($#.##)"""
     return "${:.2f}".format(x)
-        
+def get_expenses(exp_type):
+    item_list=[]
+    while True:
+        response=not_blank("Item name: ")
+        if response!="xxx":
+            item_list.append(response)
+            continue
+        if len(item_list)== 0 and exp_type=="variable":
+            print(f"Oops - you have not entered anything.\nYou need at least one item.")
+            continue
+        return item_list
 #main is here
+# product_name = not_blank("Product name: ")
+# quanity_made = num_check("Quantity being made: ", "interger", True)
+all_variable_item=get_expenses("variable")
+print(len(all_variable_item))
+all_fixed_item=get_expenses("fixed")
+print(len(all_fixed_item))
