@@ -1,5 +1,5 @@
 import pandas
-import random
+from tabulate import tabulate
 # this one makes a decorated statements
 def make_statement(statement, decoration, lines=1):
     """This one makes a decorated statement, defaults to a single line
@@ -74,9 +74,13 @@ def num_check(question, num_type, exitcode):
         num_type = float
         value_error_announcement = "please enter a number"
         lesser_announcement = "please enter a number that is more than 0"
+
     while True:
         try:
-            response = num_type(input())
+            response = input()
+            if response=="":
+                return ""
+            response=num_type(response)
             if response <= 0:
                 print(lesser_announcement)
                 continue
@@ -87,47 +91,93 @@ def num_check(question, num_type, exitcode):
             print(value_error_announcement)
 
 
-def int_check(question,name):
-    """ This function check if their age are available to buy a ticket and output their name with the result, ie: "A is too young"""
-    print(question,end="")
-    while True:
-        try:
-            response = int(input())
-            if response < 12:
-                print(f"Sorry you are too young for this movie")
-                return False
-            elif response > 120:
-                print(f"?? That looks like a typo (too old)")
-                return False
-            elif response >=12 and response<16:
-                # First return element is for the if condition in main to see if the program should continue because users age is in valid boundary
-                # Second element return the index/position of their ticket type in the list in main: 0 for children, 1 for adult, 2 for senior
-                return True , 0
-            elif response >=16 and response<65:
-                return True, 1
-            elif response >=65 and response<121:
-                return True, 2
-        except ValueError:
-            print("<Please enter an integer>")
+# def int_check(question,name):
+#     """ This function check if their age are available to buy a ticket and output their name with the result, ie: "A is too young"""
+#     print(question,end="")
+#     while True:
+#         try:
+#             response = int(input())
+#             if response < 12:
+#                 print(f"Sorry you are too young for this movie")
+#                 return False
+#             elif response > 120:
+#                 print(f"?? That looks like a typo (too old)")
+#                 return False
+#             elif response >=12 and response<16:
+#                 # First return element is for the if condition in main to see if the program should continue because users age is in valid boundary
+#                 # Second element return the index/position of their ticket type in the list in main: 0 for children, 1 for adult, 2 for senior
+#                 return True , 0
+#             elif response >=16 and response<65:
+#                 return True, 1
+#             elif response >=65 and response<121:
+#                 return True, 2
+#         except ValueError:
+#             print("<Please enter an integer>")
 
 def currency(x):
     """Formats numbers as currency ($#.##)"""
     return "${:.2f}".format(x)
-def get_expenses(exp_type):
-    item_list=[]
+
+def get_expenses(exp_type,default_item_quanity=1):
+    """:return the frame for pandas""" 
+    all_item_name=[]
+    all_item_quanity=[]
+    all_item_cost=[]
+
+    # expenses dict
+    data_dict={
+        "Item":all_item_name,
+        "Amount":all_item_quanity,
+        "$ / Item":all_item_cost
+    }
     while True:
         response=not_blank("Item name: ")
         if response!="xxx":
-            item_list.append(response)
+            # name of item
+            all_item_name.append(response)
+            item_quanity=num_check("How many: ", "int", True)
+            # numer of item
+            if item_quanity=="":
+                item_quanity=default_item_quanity
+            all_item_quanity.append(item_quanity)
+            # cost of item
+            item_cost=num_check("Price for one: ","float",True)
+            all_item_cost.append(item_cost)
             continue
-        if len(item_list)== 0 and exp_type=="variable":
+        if len(all_item_name)== 0 and exp_type=="variable":
             print(f"Oops - you have not entered anything.\nYou need at least one item.")
             continue
-        return item_list
+        break
+
+    # make pandas
+    expense_frame = pandas.DataFrame(data_dict)
+    # calculate subtotal
+    subtotal = expense_frame['Cost'].sum()
+    return expense_frame, subtotal
 #main is here
 # product_name = not_blank("Product name: ")
-# quanity_made = num_check("Quantity being made: ", "interger", True)
-all_variable_item=get_expenses("variable")
-print(len(all_variable_item))
-all_fixed_item=get_expenses("fixed")
-print(len(all_fixed_item))
+quanity_made = num_check("Quantity being made: ", "interger", True)
+variable_expense=get_expenses("variable",quanity_made)
+
+print()
+
+print("Getting Variable Costs...")
+variable_pandas=variable_expense[0]
+variable_subtotal=variable_expense[1]
+
+print("Getting Fixed Costs...")
+fixed_expense = get_expenses("fixed")
+print()
+fixed_pandas = fixed_expense[0]
+fixed_subtotal=fixed_expense[1]
+
+
+# Temporary output area fo easy testing
+
+print("=== Variable Expenses ==")
+print(variable_pandas)
+print(f"Fixed Subtotal: ${fixed_subtotal:.2f}")
+
+print()
+total_expenses = variable_subtotal + fixed_subtotal
+print(f"Total Expenses: ${total_expenses:.2f}")
