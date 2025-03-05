@@ -1,5 +1,6 @@
 import pandas
 from tabulate import tabulate
+from datetime import date
 # this one makes a decorated statements
 def make_statement(statement, decoration, lines=1):
     """This one makes a decorated statement, defaults to a single line
@@ -130,6 +131,10 @@ def get_expenses(exp_type,default_item_quanity=1):
         "Amount":all_item_quanity,
         "$ / Item":all_item_cost
     }
+    if exp_type=="fixed":
+        how_much_question="How much? $"
+    else:
+        how_much_question="Price for one: $"
     while True:
         response=not_blank("Item name: ")
         if response!="xxx":
@@ -141,7 +146,7 @@ def get_expenses(exp_type,default_item_quanity=1):
                 item_quanity=default_item_quanity
             all_item_quanity.append(item_quanity)
             # cost of item
-            item_cost=num_check("Price for one: ","float",True)
+            item_cost=num_check(how_much_question,"float",True)
             all_item_cost.append(item_cost)
             continue
         if len(all_item_name)== 0 and exp_type=="variable":
@@ -151,11 +156,26 @@ def get_expenses(exp_type,default_item_quanity=1):
 
     # make pandas
     expense_frame = pandas.DataFrame(data_dict)
+    # Calculate Cost column
+    expense_frame["Cost"]= expense_frame['Amount'] * expense_frame['$ / Item']
     # calculate subtotal
     subtotal = expense_frame['Cost'].sum()
-    return expense_frame, subtotal
+
+    # apply currency formatting to currency columns
+    add_dollars=["$ / Item", "Cost"]
+    for item in add_dollars:
+        expense_frame[item] = expense_frame[item].apply(currency)
+    if exp_type == "variable":
+        expense_string=tabulate(expense_frame,headers='keys',tablefmt='psql',showindex=False)
+    else:
+        expense_string = tabulate(expense_frame[['Item' , 'Cost']], headers='keys', tablefmt='psql', showindex=False)
+    return expense_string, subtotal
+
+
 #main is here
-# product_name = not_blank("Product name: ")
+fixed_subtotal = 0
+fixed_panda_string = ""
+product_name = not_blank("Product name: ")
 quanity_made = num_check("Quantity being made: ", "interger", True)
 variable_expense=get_expenses("variable",quanity_made)
 
@@ -165,19 +185,61 @@ print("Getting Variable Costs...")
 variable_pandas=variable_expense[0]
 variable_subtotal=variable_expense[1]
 
-print("Getting Fixed Costs...")
-fixed_expense = get_expenses("fixed")
+
+# ask if user has fixed expenses and retrive them
 print()
-fixed_pandas = fixed_expense[0]
-fixed_subtotal=fixed_expense[1]
 
+if yes_no("Do you have fixed expenses? "):
+    fixed_expense=get_expenses("fixed")
+    fixed_panda_string= fixed_expense[0]
+    fixed_subtotal = fixed_expense[1]
+print()
+if fixed_subtotal == 0 :
+    has_fixed = False 
+    fixed_panda_string=""
 
-# Temporary output area fo easy testing
-
-print("=== Variable Expenses ==")
-print(variable_pandas)
-print(f"Fixed Subtotal: ${fixed_subtotal:.2f}")
 
 print()
+
 total_expenses = variable_subtotal + fixed_subtotal
-print(f"Total Expenses: ${total_expenses:.2f}")
+# Get profit Goal here.
+
+# strings / output area
+
+# **** Get current date for heading and filename ****
+today = date.today()
+
+# Get day, month and year as indiviual strings
+day = today.strftime("%d")
+month = today.strftime("%m")
+year = today.strftime("%Y")
+
+# strings for printing to file
+file_heading = make_statement("Fund Raising Calculator" +" "+f"{product_name}, {day}/{month}/{year}","=")
+file_quanity = f"Quanity being made: {quanity_made}"
+file_variable_expenses_heading = make_statement("Variable Expenses","-")
+file_variable_expenses_frame = variable_pandas
+file_variable_expenses_subtotal = f"Variable Expenses Subtotal: ${variable_subtotal}"
+if has_fixed == False:
+    file_fixed_expenses_heading = make_statement("You have no fixed expenses","-")
+    file_fixed_expenses_pandas = ""
+    file_fixed_expenses_subtotal = f"Fixed Expenses Subtotal: ${fixed_subtotal}"
+else:
+    file_fixed_expenses_heading = make_statement("Fixed Expenses","-")
+    file_fixed_expenses_pandas = fixed_panda_string
+    file_fixed_expenses_subtotal = f"Fixed Expenses Subtotal: ${fixed_subtotal}"
+file_total_Expenses = f"Total Expenses: ${total_expenses}"
+
+list=(
+    file_heading,"\n",
+    file_quanity,"\n",
+    file_variable_expenses_heading,
+    file_variable_expenses_frame,
+    file_variable_expenses_subtotal,"\n",
+    file_fixed_expenses_heading,
+    file_fixed_expenses_pandas,
+    file_fixed_expenses_subtotal,"\n",
+    file_total_Expenses,"\n"
+)
+for item in list:
+    print(item)
